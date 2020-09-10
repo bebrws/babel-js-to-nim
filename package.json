@@ -1,0 +1,20 @@
+{
+  "name": "babel-js-to-nim",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "buildunnneded": "set BABEL_ENV=plugin&& babel index.js --out-file ./out/index.js",
+    "sample": "babel sample.js --out-file out/sample.js",
+    "debug": "node --inspect-brk ./node_modules/babel-cli/lib/babel/index.js sample.js --out-file out/sample.js ",
+    "start": "npm run sample"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@sweet-js/cli": "^3.0.13",
+    "babel-cli": "^6.26.0",
+    "babel-plugin-macros": "^2.8.0",
+    "babel-types": "^6.26.0"
+  }
+}
