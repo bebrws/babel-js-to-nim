@@ -18,12 +18,10 @@ import \"../base.nim\"
 let indentation = 0;
 
 const addLine = (l) => {
-  if (l.includes('undefined')) debugger
   const curBlock = blocks[blocks.length -1]; 
   curBlock.code += `\n${" ".repeat(indentation)}${l}`;
 };
 const addString = (l) => {
-  if (l.includes('undefined')) debugger
   const curBlock = blocks[blocks.length -1]; 
   curBlock.code += `${" ".repeat(indentation)}${l}`;
 };
@@ -73,7 +71,7 @@ exports.default = function({ types: t }) {
           }
         },
         exit(path, state) {
-
+          addString(`)`);
         }
       },
       AssignmentExpression: {
@@ -83,36 +81,39 @@ exports.default = function({ types: t }) {
         exit(path, state) {
         }
       },
-      Identifier(path, state) {
-        const name = path.node.name;
+      Identifier: {
+        enter(path, state) {
+          const name = path.node.name;
 
-        const isFromAssignment = path.parent.type === 'AssignmentExpression';
-        const isFromVariableDeclaration = path.parent.type === "VariableDeclarator";
-        const isFromArgCall = path.parent.type === "CallExpression" && path.parent.arguments.some(a => a.start == path.node.start && a.end == path.node.end);
+          const isFromAssignment = path.parent.type === 'AssignmentExpression';
+          const isFromVariableDeclaration = path.parent.type === "VariableDeclarator";
+          const isFromArgCall = path.parent.type === "CallExpression" && path.parent.arguments.some(a => a.start == path.node.start && a.end == path.node.end);
 
-        if (isFromAssignment) {
-          addLine(`${name} `);
-        } else if (isFromVariableDeclaration){ 
-          
-          if (isFromVar) {
+          if (isFromAssignment) {
             addLine(`${name} `);
+          } else if (isFromVariableDeclaration){ 
+            
+            if (isFromVar) {
+              addLine(`JS2NThis.setVar("${name}", `);
+            }
+            if (isFromLet) {
+              addLine(`JS2NThis.setLet("${name}", `);
+            }
+            
+          } else if (isFromArgCall){ 
+            addString(` JS2NThis.getVar("${name}") `);
           }
-          if (isFromLet) {
-            addLine(`var ${name} `);
-          }
-          
-        } else if (isFromArgCall){ 
-          addString(` ${name} `);
-        }
 
-        if (path.parent.type === 'VariableDeclarator') {
-          addString(` = `);
-
-          if (path.parent.init === undefined) {
-            addString(` newUndefined()`);
+          if (path.parent.type === 'VariableDeclarator') {
+            if (path.parent.init === undefined) {
+              addString(` newUndefined()`);
+            }
+          } else if (path.parent.type === 'AssignmentExpression') {
+            addString(` ${path.parent.operator} `);
           }
-        } else if (path.parent.type === 'AssignmentExpression') {
-          addString(` ${path.parent.operator} `);
+        },
+        exit(path, state) {
+          // addString(`)`);
         }
       },
       NumericLiteral(path, state) {

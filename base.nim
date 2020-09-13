@@ -110,12 +110,19 @@ proc setVarInEnv*(env: Env, name: string, value: Obj): void =
 proc setVar*(s: Obj, name: string, value: Obj): void =
   setVarInEnv(s.env, name, value)
 
+proc setLet*(s: Obj, name: string, value: Obj): void =
+  setVarInEnv(s.lets, name, value)  
+
 proc getVar*(s: Obj, name: string): Obj =
-  let env:Env = findEnvWithVar(s.env, name)
+  let env:Env = findEnvWithVar(s.lets, name)
   if env != nil:
       return env.store[name]
   else:
-      return Obj(objType:ObjType.OTUndefined)
+      let envv:Env = findEnvWithVar(s.env, name)
+      if envv != nil:
+        return envv.store[name]
+      else:
+        return Obj(objType:ObjType.OTUndefined)
 
 
 proc newUndefined*(): Obj = 
@@ -135,9 +142,9 @@ var
 
 
 
-let JS2NGlobal* = Obj(env:newGlobalEnv(), objType: ObjType.OTObject)
+let JS2NGlobal* = Obj(env:newGlobalEnv(), lets:newGlobalEnv(), objType: ObjType.OTObject)
 var JS2Nthis* = JS2NGlobal;
-let console = Obj(env: JS2Nthis.newEnv(), objType: ObjType.OTObject)
+let console = Obj(env: JS2Nthis.newEnv(), env: JS2Nthis.newLets(), objType: ObjType.OTObject)
 JS2NGlobal.setVar("console", console)
 
 proc logProc(args: seq[Obj]): Obj = 
