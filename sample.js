@@ -1,5 +1,5 @@
 var x = 3;
-
+var y = 1;
 x = 2;
 
 console.log("hey", "there")
@@ -12,3 +12,9 @@ function ftest() {
 }
 
 ftest()
+
+function ytest() {
+    console.log("y is: ", y)
+}
+
+ytest()

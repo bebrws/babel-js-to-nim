@@ -59,7 +59,10 @@ exports.default = function({ types: t }) {
         if (path.parent.type === 'AssignmentExpression') {
           addLine(`${name} `);
         } else { 
-          if (path.parent.type !== 'MemberExpression' && path.parent.type !== 'FunctionDeclaration') {
+          const isFromVariableDeclaration = path.parent.type === "VariableDeclarator";
+          const isArgInCall = path.parent.type === "CallExpression" && path.parent.arguments.some(a => a.start == path.node.start && a.end == path.node.end);
+          if (isFromVariableDeclaration || isArgInCall) {
+            // debugger
             addString(` ${name} `);
           }
         }
