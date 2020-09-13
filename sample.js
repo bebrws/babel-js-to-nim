@@ -1,6 +1,11 @@
+var a =2;
+let r = 3;
+
 var x = 3;
 var y = 1;
 x = 2;
+
+
 
 console.log("hey", "there")
 
@@ -10,6 +15,8 @@ function ftest() {
     console.log("newx:", newx)
     console.log("x:", x)
 }
+
+var l = 2
 
 ftest()
 

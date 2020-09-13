@@ -1,8 +1,15 @@
 "use strict";
 
 const { inspect } = require('util');
-var fs = require('fs');
+const fs = require('fs');
 // var c = require('babel-types');
+
+let varsInBlock = [];
+let blocks = []; // {vars: [], code: ""}
+const generateNewBlock = () => { return { vars: [], code: ""}; }
+
+let isFromLet = false;
+let isFromVar = false;
 
 let nimOut = `
 import \"../base.nim\"
@@ -10,8 +17,16 @@ import \"../base.nim\"
 
 let indentation = 0;
 
-const addLine = (l) => nimOut = nimOut.concat(`\n${" ".repeat(indentation)}${l}`);
-const addString = (l) => nimOut = nimOut.concat(`${l}`);
+const addLine = (l) => {
+  if (l.includes('undefined')) debugger
+  const curBlock = blocks[blocks.length -1]; 
+  curBlock.code += `\n${" ".repeat(indentation)}${l}`;
+};
+const addString = (l) => {
+  if (l.includes('undefined')) debugger
+  const curBlock = blocks[blocks.length -1]; 
+  curBlock.code += `${" ".repeat(indentation)}${l}`;
+};
 
 
 Object.defineProperty(exports, "__esModule", {
@@ -31,20 +46,34 @@ exports.default = function({ types: t }) {
       Program: {
         enter(path, state) {
           console.log("Program enter");
+          blocks.push(generateNewBlock());
         },
         exit(path, state) {
           console.log("Program exit");
+          const curBlock = blocks.pop();
+          curBlock.vars.forEach(v => {
+            nimOut += `\nvar ${v} = newUndefined()`;
+          });
+          nimOut += `\n${curBlock.code}`;
         }
       },
       VariableDeclaration: {
         enter(path, state) {
           console.log(`VariableDeclaration Path.node is ${inspect(path.node)}`);
-          if (path.node.declarations) {
-            addLine(`var `);
-          }   
+          isFromLet = path.node.kind === "let";
+          isFromVar = path.node.kind === "var";
+
+          if (isFromLet) {
+            // addLine(`var `);
+          } else {
+            // Add the list of all variables being defined by this declaration so 
+            // they can be added to the top of the block declaration adn set to undefined
+            const curBlock = blocks[blocks.length - 1];
+            curBlock.vars = curBlock.vars.concat(path.node.declarations.map(d => d.id.name));
+          }
         },
         exit(path, state) {
-          addString(`;`);
+
         }
       },
       AssignmentExpression: {
@@ -56,20 +85,33 @@ exports.default = function({ types: t }) {
       },
       Identifier(path, state) {
         const name = path.node.name;
-        if (path.parent.type === 'AssignmentExpression') {
+
+        const isFromAssignment = path.parent.type === 'AssignmentExpression';
+        const isFromVariableDeclaration = path.parent.type === "VariableDeclarator";
+        const isFromArgCall = path.parent.type === "CallExpression" && path.parent.arguments.some(a => a.start == path.node.start && a.end == path.node.end);
+
+        if (isFromAssignment) {
           addLine(`${name} `);
-        } else { 
-          const isFromVariableDeclaration = path.parent.type === "VariableDeclarator";
-          const isArgInCall = path.parent.type === "CallExpression" && path.parent.arguments.some(a => a.start == path.node.start && a.end == path.node.end);
-          if (isFromVariableDeclaration || isArgInCall) {
-            // debugger
-            addString(` ${name} `);
+        } else if (isFromVariableDeclaration){ 
+          
+          if (isFromVar) {
+            addLine(`${name} `);
           }
+          if (isFromLet) {
+            addLine(`var ${name} `);
+          }
+          
+        } else if (isFromArgCall){ 
+          addString(` ${name} `);
         }
+
         if (path.parent.type === 'VariableDeclarator') {
           addString(` = `);
-        }
-        if (path.parent.type === 'AssignmentExpression') {
+
+          if (path.parent.init === undefined) {
+            addString(` newUndefined()`);
+          }
+        } else if (path.parent.type === 'AssignmentExpression') {
           addString(` ${path.parent.operator} `);
         }
       },
@@ -112,8 +154,8 @@ exports.default = function({ types: t }) {
         enter(path, state) {
           addLine(`proc ${path.node.id.name}(args: seq[Obj]): Obj = `);
           indentation += 2;
-          addLine(`let JS2NOldThis = JS2NThis;`)
-          addLine(`let JS2NThis = Obj(env: JS2NOldThis.newEnv(), objType: ObjType.OTObject)`)
+          // addLine(`let JS2NOldThis = JS2NThis;`)
+          // addLine(`let JS2NThis = Obj(env: JS2NOldThis.newEnv(), objType: ObjType.OTObject)`)
         },
         exit(path, state) {
           indentation -= 2;
@@ -123,8 +165,18 @@ exports.default = function({ types: t }) {
       BlockStatement: {
         enter(path, state) {
           console.log("Entered a BlockStatement");
+          addLine(`let JS2NOldThis = JS2NThis;`)
+          addLine(`let JS2NThis = Obj(env: JS2NOldThis.newEnv(), objType: ObjType.OTObject)`)
+          blocks.push(generateNewBlock())
+          
         },
         exit(path, state) {
+          const poppedBlock = blocks.pop()
+          const curBlock = blocks[blocks.length - 1];
+          poppedBlock.vars.forEach(v => {
+            addLine(`var ${v} = newUndefined()`);
+          });
+          addLine(poppedBlock.code);
           console.log("Exit BlockStatement"); 
         }
       },      

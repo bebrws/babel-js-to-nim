@@ -20,6 +20,7 @@ type
     OTObject
   Obj* = ref object
     env*: Env
+    lets*: Env
     case objType*: ObjType
       of OTNumber: numValue*: float
       of OTString: strValue*: string
@@ -115,6 +116,11 @@ proc getVar*(s: Obj, name: string): Obj =
       return env.store[name]
   else:
       return Obj(objType:ObjType.OTUndefined)
+
+
+proc newUndefined*(): Obj = 
+  return Obj(env: nil, objType: OTUndefined)
+
 
 proc parseNumber*(str: string): float =
     var res: float
